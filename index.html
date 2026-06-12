@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Тенісна ліга</title>
+    <meta
+      name="description"
+      content="Жива матриця матчів, рейтинг і останні результати жіночої тенісної ліги."
+    >
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='32' fill='%2317221d'/%3E%3Ctext x='32' y='39' text-anchor='middle' font-family='Arial,sans-serif' font-size='18' font-weight='800' fill='white'%3ETL%3C/text%3E%3C/svg%3E"
+    >
+    <link rel="preload" href="assets/tennis-court-hero.png" as="image">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+    >
+    <link rel="stylesheet" href="styles.css">
+    <script src="config.js"></script>
+    <script type="module" src="src/app.js"></script>
+  </head>
+  <body>
+    <div class="loading-overlay" id="loading-overlay" aria-hidden="true">
+      <span class="spinner"></span>
+      <span class="loading-overlay__text">Завантажуємо лігу…</span>
+    </div>
+
+    <header class="app-header" id="top">
+      <a class="brand" href="#overview" aria-label="Тенісна ліга">
+        <span class="brand__ball" aria-hidden="true"></span>
+        <span class="brand__text">
+          <strong>Тенісна ліга</strong>
+          <small>Жіноча ліга • сезон 2026</small>
+        </span>
+      </a>
+
+      <button
+        class="nav-toggle"
+        id="nav-toggle"
+        type="button"
+        aria-label="Відкрити меню"
+        aria-expanded="false"
+        aria-controls="primary-nav"
+      >
+        <span aria-hidden="true"></span>
+      </button>
+
+      <nav class="topbar" id="primary-nav" aria-label="Головна навігація">
+        <a class="ghost-link is-active" href="#overview">Огляд</a>
+        <a class="ghost-link" href="#schedule">Матчі</a>
+        <a class="ghost-link" href="#ranking">Рейтинг</a>
+        <a class="ghost-link" href="#players">Гравчині</a>
+        <a class="ghost-link" href="#stats">Статистика</a>
+        <a class="ghost-link" href="#about">Про лігу</a>
+      </nav>
+
+      <div class="header-status" aria-label="Статус оновлення">
+        <span id="last-updated">Оновлюємо таблицю</span>
+        <button class="refresh-button" id="refresh-button" type="button" aria-label="Оновити дані">
+          <span class="refresh-symbol" aria-hidden="true">↻</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="page-shell" id="overview">
+      <section class="notice" id="setup-notice" hidden>
+        <div>
+          <strong>Потрібно підключити live-дані.</strong>
+          <span>
+            Зараз сайт показує demo/review-дані. Додай published CSV URL аркуша матчів у <code>config.js</code>.
+          </span>
+        </div>
+      </section>
+
+      <section class="overview-grid">
+        <section class="panel compact-stats" id="stats">
+          <div class="panel-title">
+            <span aria-hidden="true">▥</span>
+            <h2>Статистика ліги</h2>
+          </div>
+          <div class="stat-mosaic">
+            <article>
+              <strong id="stat-played">0</strong>
+              <span>зіграно матчів</span>
+            </article>
+            <article>
+              <strong id="stat-sets">0</strong>
+              <span>зіграно сетів</span>
+            </article>
+            <article>
+              <strong id="stat-avg-sets">0.0</strong>
+              <span>сер. сетів за матч</span>
+            </article>
+            <article>
+              <strong id="stat-straight">0%</strong>
+              <span>матчів у 2 сетах</span>
+            </article>
+          </div>
+        </section>
+
+        <section class="panel leader-panel">
+          <div class="panel-title">
+            <span aria-hidden="true">👑</span>
+            <h2>Лідерка тижня</h2>
+          </div>
+          <div class="leader-card">
+            <span class="leader-ball" aria-hidden="true"></span>
+            <div>
+              <strong id="leader-name">-</strong>
+              <span id="leader-record">0 перемог • 0 поразок</span>
+              <span id="leader-sets">0 виграних сетів</span>
+            </div>
+          </div>
+          <div class="leader-badge" id="leader-badge">0% перемог</div>
+        </section>
+
+        <section class="panel ranking-panel" id="ranking">
+          <div class="panel-title panel-title--green">
+            <span aria-hidden="true">🏆</span>
+            <h2>Рейтинг</h2>
+          </div>
+          <div class="ranking-table-wrap">
+            <table class="ranking-table">
+              <thead>
+                <tr>
+                  <th>Місце</th>
+                  <th>Гравчиня</th>
+                  <th>Ігри</th>
+                  <th>Очки</th>
+                </tr>
+              </thead>
+              <tbody id="ranking-body"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel recent-panel">
+          <div class="panel-title">
+            <span aria-hidden="true">↺</span>
+            <h2>Останні матчі</h2>
+          </div>
+          <div class="match-list" id="recent-matches"></div>
+          <a class="outline-link" href="#schedule">Дивитися всі матчі <span>→</span></a>
+        </section>
+      </section>
+
+      <section class="promo-strip" id="about">
+        <div class="promo-strip__image" aria-hidden="true"></div>
+        <strong>Грайте з пристрастю. Перемагайте з усмішкою.</strong>
+        <div class="promo-metrics" id="players">
+          <span><b id="stat-players">13</b> гравчинь</span>
+          <span><b id="stat-remaining">0</b> матчів попереду</span>
+          <span><b id="stat-total-sets">0</b> зіграно сетів</span>
+        </div>
+      </section>
+
+      <section class="panel matrix-panel" id="matrix">
+        <div class="section-heading">
+          <div class="title-row">
+            <span class="title-icon" aria-hidden="true">▦</span>
+            <h2>Матриця матчів</h2>
+          </div>
+        </div>
+        <div class="matrix-wrap" tabindex="0" aria-label="Прокручувана матриця матчів">
+          <table class="matrix-table" id="matrix-table"></table>
+        </div>
+        <div class="matrix-note">
+          <span aria-hidden="true">ⓘ</span>
+          <span>У клітинці показано рахунок з точки зору гравчині в рядку.</span>
+        </div>
+      </section>
+
+      <section class="panel schedule-panel" id="schedule">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Графік ігор • Червень</p>
+            <h2>Календар матчів</h2>
+          </div>
+          <div class="schedule-summary" aria-label="Підсумок розкладу">
+            <span id="schedule-count">0 матчів</span>
+            <span id="schedule-next">Найближчий матч уточнюється</span>
+          </div>
+        </div>
+        <div class="schedule-list" id="schedule-list"></div>
+      </section>
+
+      <section class="panel issues-panel" id="issues-panel" hidden>
+        <div class="section-heading section-heading--compact">
+          <div>
+            <p class="eyebrow">Перевірка даних</p>
+            <h2>Потребує уваги</h2>
+          </div>
+        </div>
+        <ul class="issue-list" id="issue-list"></ul>
+      </section>
+    </main>
+
+    <button
+      class="scroll-top"
+      id="scroll-top"
+      type="button"
+      aria-label="Піднятися вгору"
+      hidden
+    >
+      <span aria-hidden="true">↑</span>
+    </button>
+  </body>
+</html>
