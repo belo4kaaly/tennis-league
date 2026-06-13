@@ -265,10 +265,14 @@ function renderRanking(state) {
     const playedCell = document.createElement("td");
     playedCell.textContent = item.played;
 
+    const gamesCell = document.createElement("td");
+    gamesCell.textContent = `${item.gamesWon}:${item.gamesLost}`;
+    gamesCell.title = `Різниця геймів: ${item.gameDiff > 0 ? "+" : ""}${item.gameDiff}`;
+
     const pointsCell = document.createElement("td");
     pointsCell.innerHTML = `<strong>${item.points}</strong>`;
 
-    row.append(positionCell, playerCell, playedCell, pointsCell);
+    row.append(positionCell, playerCell, playedCell, gamesCell, pointsCell);
     return row;
   }));
 }

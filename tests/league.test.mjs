@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
   buildLeagueState,
+  calculateMatchGames,
   buildScheduleState,
   parseCsv,
   parseMatchLine,
@@ -22,6 +23,11 @@ test("parses deciding tie-break as a match set", () => {
   assert.equal(match.setsB, 1);
 });
 
+test("counts match tie-break as one game for ranking tie-breakers", () => {
+  const match = parseMatchLine("Гончаренко - Омельяненко 6:0 4:6 10:7");
+  assert.deepEqual(calculateMatchGames(match.sets), { a: 11, b: 6 });
+});
+
 test("flags unknown players and incomplete scores", () => {
   assert.equal(parseMatchLine("Невідома - Бородай 6:3 6:4").ok, false);
   assert.equal(parseMatchLine("Бородай - Омельяненко").ok, false);
@@ -36,6 +42,11 @@ test("builds ranking from screenshot review data", async () => {
   assert.equal(state.issues.length, 0);
   assert.equal(state.stats.leader.player.fullName, "Антощенко Тетяна");
   assert.equal(state.stats.leader.points, 6);
+  const honcharenko = state.ranking.find((item) => item.player.fullName === "Гончаренко Анелія");
+  const omelianenko = state.ranking.find((item) => item.player.fullName === "Омельяненко Анна");
+  assert.equal(honcharenko.gameDiff, 15);
+  assert.equal(omelianenko.gameDiff, 15);
+  assert.equal(honcharenko.position, omelianenko.position);
 });
 
 test("reports duplicate pair and uses latest result", () => {

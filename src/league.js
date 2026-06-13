@@ -224,32 +224,47 @@ export function buildLeagueState(entries) {
     wins: 0,
     losses: 0,
     setsWon: 0,
-    setsLost: 0
+    setsLost: 0,
+    gamesWon: 0,
+    gamesLost: 0,
+    gameDiff: 0
   }]));
 
   valid.forEach((match) => {
     const statA = stats.get(match.playerA.id);
     const statB = stats.get(match.playerB.id);
+    const games = calculateMatchGames(match.sets);
     statA.played += 1;
     statB.played += 1;
     statA.setsWon += match.setsA;
     statA.setsLost += match.setsB;
+    statA.gamesWon += games.a;
+    statA.gamesLost += games.b;
     statB.setsWon += match.setsB;
     statB.setsLost += match.setsA;
+    statB.gamesWon += games.b;
+    statB.gamesLost += games.a;
     stats.get(match.winner.id).points += 1;
     stats.get(match.winner.id).wins += 1;
     stats.get(match.loser.id).losses += 1;
   });
 
-  const ranking = [...stats.values()]
-    .sort((left, right) => right.points - left.points || right.played - left.played || left.player.surname.localeCompare(right.player.surname, "uk"));
+  stats.forEach((item) => {
+    item.gameDiff = item.gamesWon - item.gamesLost;
+  });
 
-  let previousPoints = null;
+  const ranking = [...stats.values()]
+    .sort((left, right) => right.points - left.points
+      || right.gameDiff - left.gameDiff
+      || left.player.surname.localeCompare(right.player.surname, "uk"));
+
+  let previousTieKey = null;
   let currentPosition = 0;
   ranking.forEach((item, index) => {
-    if (item.points !== previousPoints) {
+    const tieKey = `${item.points}:${item.gameDiff}`;
+    if (tieKey !== previousTieKey) {
       currentPosition = index + 1;
-      previousPoints = item.points;
+      previousTieKey = tieKey;
     }
     item.position = currentPosition;
   });
@@ -297,6 +312,21 @@ export function formatSets(sets, perspective = "a") {
   return sets
     .map((set) => perspective === "a" ? `${set.a}:${set.b}` : `${set.b}:${set.a}`)
     .join(" ");
+}
+
+export function calculateMatchGames(sets) {
+  return sets.reduce((games, set) => {
+    const isMatchTieBreak = Math.max(set.a, set.b) >= 10;
+    if (isMatchTieBreak) {
+      if (set.a > set.b) games.a += 1;
+      if (set.b > set.a) games.b += 1;
+      return games;
+    }
+
+    games.a += set.a;
+    games.b += set.b;
+    return games;
+  }, { a: 0, b: 0 });
 }
 
 export function pairKey(firstId, secondId) {

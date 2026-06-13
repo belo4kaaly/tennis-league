@@ -176,8 +176,10 @@ table {
 
 .ranking-table td:nth-child(3),
 .ranking-table td:nth-child(4),
+.ranking-table td:nth-child(5),
 .ranking-table th:nth-child(3),
-.ranking-table th:nth-child(4) {
+.ranking-table th:nth-child(4),
+.ranking-table th:nth-child(5) {
   text-align: center;
 }
 
