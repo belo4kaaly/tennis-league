@@ -13,17 +13,27 @@
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='32' fill='%2317221d'/%3E%3Ctext x='32' y='39' text-anchor='middle' font-family='Arial,sans-serif' font-size='18' font-weight='800' fill='white'%3ETL%3C/text%3E%3C/svg%3E"
     >
     <link rel="preload" href="assets/tennis-court-hero.png" as="image">
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#d2783f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Тенісна ліга">
+    <link rel="apple-touch-icon" href="assets/icon-192.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
     >
-    <link rel="stylesheet" href="styles.css?v=20260613-3">
+    <link rel="stylesheet" href="styles.css?v=20260613-clay7">
     <script src="config.js"></script>
-    <script type="module" src="src/app.js?v=20260613-3"></script>
+    <script type="module" src="src/app.js?v=20260613-clay7"></script>
   </head>
   <body>
+    <div class="ptr-indicator" id="ptr-indicator" aria-hidden="true">
+      <span class="ptr-indicator__spinner">↻</span>
+    </div>
+
     <div class="loading-overlay" id="loading-overlay" aria-hidden="true">
       <span class="spinner"></span>
       <span class="loading-overlay__text">Завантажуємо лігу…</span>
@@ -50,16 +60,16 @@
       </button>
 
       <nav class="topbar" id="primary-nav" aria-label="Головна навігація">
-        <a class="ghost-link is-active" href="#overview">Огляд</a>
-        <a class="ghost-link" href="#schedule">Матчі</a>
         <a class="ghost-link" href="#ranking">Рейтинг</a>
-        <a class="ghost-link" href="#players">Гравчині</a>
-        <a class="ghost-link" href="#stats">Статистика</a>
-        <a class="ghost-link" href="#about">Про лігу</a>
+        <a class="ghost-link" href="#schedule">Календар</a>
+        <a class="ghost-link" href="#matrix">Матриця</a>
       </nav>
 
       <div class="header-status" aria-label="Статус оновлення">
         <span id="last-updated">Оновлюємо таблицю</span>
+        <button class="refresh-button" id="theme-toggle" type="button" aria-label="Перемкнути тему" aria-pressed="false">
+          <span class="theme-icon" aria-hidden="true">🌙</span>
+        </button>
         <button class="refresh-button" id="refresh-button" type="button" aria-label="Оновити дані">
           <span class="refresh-symbol" aria-hidden="true">↻</span>
         </button>
@@ -76,48 +86,51 @@
         </div>
       </section>
 
-      <section class="overview-grid">
-        <section class="panel compact-stats" id="stats">
-          <div class="panel-title">
-            <span aria-hidden="true">▥</span>
-            <h2>Статистика ліги</h2>
-          </div>
-          <div class="stat-mosaic">
-            <article>
-              <strong id="stat-played">0</strong>
-              <span>зіграно матчів</span>
-            </article>
-            <article>
-              <strong id="stat-sets">0</strong>
-              <span>зіграно сетів</span>
-            </article>
-            <article>
-              <strong id="stat-avg-sets">0.0</strong>
-              <span>сер. сетів за матч</span>
-            </article>
-            <article>
-              <strong id="stat-straight">0%</strong>
-              <span>матчів у 2 сетах</span>
-            </article>
-          </div>
-        </section>
-
-        <section class="panel leader-panel">
-          <div class="panel-title">
-            <span aria-hidden="true">👑</span>
-            <h2>Лідерка тижня</h2>
-          </div>
-          <div class="leader-card">
+      <section class="hero-banner" id="stats" aria-label="Огляд ліги">
+        <div class="hero-banner__main" id="about">
+          <p class="hero-banner__eyebrow">Жіноча ліга • сезон 2026</p>
+          <div class="hero-banner__leader">
             <span class="leader-ball" aria-hidden="true"></span>
-            <div>
+            <div class="hero-banner__leader-text">
+              <span class="hero-banner__crown">👑 Лідерка тижня</span>
               <strong id="leader-name">-</strong>
               <span id="leader-record">0 перемог • 0 поразок</span>
               <span id="leader-sets">0 виграних сетів</span>
             </div>
+            <div class="leader-badge" id="leader-badge">0% перемог</div>
           </div>
-          <div class="leader-badge" id="leader-badge">0% перемог</div>
-        </section>
+          <p class="hero-banner__tagline">Грайте з пристрастю. Перемагайте з усмішкою.</p>
+        </div>
+        <div class="hero-banner__metrics" id="players">
+          <article>
+            <strong id="stat-played">0</strong>
+            <span>зіграно матчів</span>
+          </article>
+          <article>
+            <strong id="stat-total-sets">0</strong>
+            <span>зіграно сетів</span>
+          </article>
+          <article>
+            <strong id="stat-avg-sets">0.0</strong>
+            <span>сер. сетів / матч</span>
+          </article>
+          <article>
+            <strong id="stat-straight">0%</strong>
+            <span>матчів у 2 сетах</span>
+          </article>
+          <article>
+            <strong id="stat-players">13</strong>
+            <span>гравчинь</span>
+          </article>
+          <article>
+            <strong id="stat-remaining">0</strong>
+            <span>матчів попереду</span>
+          </article>
+          <strong id="stat-sets" hidden>0</strong>
+        </div>
+      </section>
 
+      <section class="overview-grid">
         <section class="panel ranking-panel" id="ranking">
           <div class="panel-title panel-title--green">
             <span aria-hidden="true">🏆</span>
@@ -145,18 +158,21 @@
             <h2>Останні матчі</h2>
           </div>
           <div class="match-list" id="recent-matches"></div>
-          <a class="outline-link" href="#schedule">Дивитися всі матчі <span>→</span></a>
         </section>
       </section>
 
-      <section class="promo-strip" id="about">
-        <div class="promo-strip__image" aria-hidden="true"></div>
-        <strong>Грайте з пристрастю. Перемагайте з усмішкою.</strong>
-        <div class="promo-metrics" id="players">
-          <span><b id="stat-players">13</b> гравчинь</span>
-          <span><b id="stat-remaining">0</b> матчів попереду</span>
-          <span><b id="stat-total-sets">0</b> зіграно сетів</span>
+      <section class="panel schedule-panel" id="schedule">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Графік ігор • Червень</p>
+            <h2>Календар матчів</h2>
+          </div>
+          <div class="schedule-summary" aria-label="Підсумок розкладу">
+            <span id="schedule-count">0 майбутніх матчів</span>
+            <span id="schedule-next">Найближчий матч уточнюється</span>
+          </div>
         </div>
+        <div class="schedule-list" id="schedule-list"></div>
       </section>
 
       <section class="panel matrix-panel" id="matrix">
@@ -173,20 +189,11 @@
           <span aria-hidden="true">ⓘ</span>
           <span>У клітинці показано рахунок з точки зору гравчині в рядку.</span>
         </div>
-      </section>
-
-      <section class="panel schedule-panel" id="schedule">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Графік ігор • Червень</p>
-            <h2>Календар матчів</h2>
-          </div>
-          <div class="schedule-summary" aria-label="Підсумок розкладу">
-            <span id="schedule-count">0 майбутніх матчів</span>
-            <span id="schedule-next">Найближчий матч уточнюється</span>
-          </div>
+        <div class="h2h" id="h2h" aria-label="Результати гравчині">
+          <label class="h2h__label" for="h2h-select">Оберіть гравчиню</label>
+          <select class="h2h__select" id="h2h-select"></select>
+          <div class="h2h__results" id="h2h-results"></div>
         </div>
-        <div class="schedule-list" id="schedule-list"></div>
       </section>
 
       <section class="panel issues-panel" id="issues-panel" hidden>
@@ -209,5 +216,10 @@
     >
       <span aria-hidden="true">↑</span>
     </button>
+
+    <dialog class="profile" id="profile-dialog" aria-label="Профіль гравчині">
+      <button class="profile__close" id="profile-close" type="button" aria-label="Закрити">×</button>
+      <div class="profile__body" id="profile-body"></div>
+    </dialog>
   </body>
 </html>

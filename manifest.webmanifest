@@ -1,0 +1,17 @@
+{
+  "name": "Тенісна ліга",
+  "short_name": "Тенісна ліга",
+  "description": "Живий рейтинг, матриця та розклад жіночої тенісної ліги.",
+  "lang": "uk",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f7efe3",
+  "theme_color": "#d2783f",
+  "icons": [
+    { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

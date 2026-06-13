@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Тенісна ліга">
+  <rect width="512" height="512" rx="104" fill="#c85a34"/>
+  <rect width="512" height="512" rx="104" fill="url(#g)"/>
+  <defs>
+    <radialGradient id="g" cx="32%" cy="26%" r="80%">
+      <stop offset="0%" stop-color="#e08a4e"/>
+      <stop offset="60%" stop-color="#c85a34"/>
+      <stop offset="100%" stop-color="#9c3f20"/>
+    </radialGradient>
+  </defs>
+  <circle cx="256" cy="256" r="150" fill="#cfe34a"/>
+  <circle cx="256" cy="256" r="150" fill="none" stroke="#a9c531" stroke-width="4"/>
+  <path d="M256 106 C 196 156, 196 356, 256 406" fill="none" stroke="#fffaf2" stroke-width="14" stroke-linecap="round"/>
+  <path d="M256 106 C 316 156, 316 356, 256 406" fill="none" stroke="#fffaf2" stroke-width="14" stroke-linecap="round"/>
+</svg>

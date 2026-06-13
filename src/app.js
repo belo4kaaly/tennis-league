@@ -1,4 +1,4 @@
-import { buildLeagueState, buildScheduleState, parseCsv, players, rowsToEntries, rowsToScheduleEntries } from "./league.js?v=20260613-2";
+import { buildLeagueState, buildScheduleState, parseCsv, players, rowsToEntries, rowsToScheduleEntries } from "./league.js?v=20260613-clay7";
 
 const config = window.TENNIS_LEAGUE_CONFIG ?? {};
 
@@ -29,19 +29,32 @@ const elements = {
   topbar: document.querySelector("#primary-nav"),
   refreshButton: document.querySelector("#refresh-button"),
   appHeader: document.querySelector(".app-header"),
-  scrollTop: document.querySelector("#scroll-top")
+  scrollTop: document.querySelector("#scroll-top"),
+  themeToggle: document.querySelector("#theme-toggle"),
+  ptrIndicator: document.querySelector("#ptr-indicator"),
+  h2hSelect: document.querySelector("#h2h-select"),
+  h2hResults: document.querySelector("#h2h-results"),
+  profileDialog: document.querySelector("#profile-dialog"),
+  profileBody: document.querySelector("#profile-body"),
+  profileClose: document.querySelector("#profile-close")
 };
 
 const REFRESH_INTERVAL_MS = 60000;
 let isRefreshing = false;
+let currentState = null;
 
 init();
 
 function init() {
+  setupTheme();
   setupNavToggle();
   setupScrollSpy();
   setupRefreshButton();
   setupScrollTop();
+  setupPullToRefresh();
+  setupProfileDialog();
+  setupH2h();
+  registerServiceWorker();
 
   loadAndRender();
   window.setInterval(() => loadAndRender(), REFRESH_INTERVAL_MS);
@@ -58,6 +71,7 @@ async function loadAndRender({ manual = false } = {}) {
       loadScheduleEntries()
     ]);
     const state = buildLeagueState(entries);
+    currentState = state;
     if (issue) state.issues.unshift(issue);
 
     const schedule = buildScheduleState(scheduleResult.entries);
@@ -69,6 +83,7 @@ async function loadAndRender({ manual = false } = {}) {
     renderRecentMatches(state.matches);
     renderSchedule(schedule);
     renderMatrix(state);
+    renderH2h(state);
     renderIssues(state.issues);
     if (!manual) restoreHashTarget();
   } finally {
@@ -251,14 +266,19 @@ function renderRanking(state) {
     positionCell.innerHTML = `<span class="position-badge">${item.position}</span>`;
 
     const playerCell = document.createElement("td");
-    const cell = document.createElement("div");
-    cell.className = "player-cell";
+    const cell = document.createElement("button");
+    cell.type = "button";
+    cell.className = "player-cell player-cell--button";
+    cell.dataset.playerId = item.player.id;
+    cell.setAttribute("aria-label", `Профіль: ${item.player.fullName}`);
     cell.appendChild(createAvatar(item.player));
     const text = document.createElement("div");
     text.className = "player-cell__text";
+    const form = getPlayerForm(currentState, item.player.id, 5);
     text.innerHTML = `
       <strong>${item.player.fullName}</strong>
       <span>${item.wins} перемог • ${item.losses} поразок</span>
+      ${form.length ? `<span class="form-dots">${renderFormDots(form)}</span>` : ""}
     `;
     cell.appendChild(text);
     playerCell.appendChild(cell);
@@ -303,7 +323,13 @@ function createAvatar(player) {
 }
 
 function renderRecentMatches(matches) {
-  const sorted = [...matches].reverse().slice(0, 6);
+  // Сортуємо за датою (новіші згори). Дати у форматі ISO (2026-06-09)
+  // порівнюються лексикографічно = хронологічно; матчі без дати йдуть у кінець.
+  // .reverse() перед сортуванням зберігає «останній доданий — вище» для однакових дат.
+  const sorted = [...matches]
+    .reverse()
+    .sort((a, b) => (b.timestamp || "").localeCompare(a.timestamp || ""))
+    .slice(0, 9);
 
   if (!sorted.length) {
     elements.recentMatches.innerHTML = `<p class="empty-state">Матчі ще не додані.</p>`;
@@ -329,6 +355,7 @@ function renderRecentMatches(matches) {
 
     const winner = document.createElement("span");
     winner.className = "winner-pill";
+    winner.dataset.playerId = match.winner.id;
     winner.append(createAvatar(match.winner), document.createTextNode(match.winner.surname));
 
     card.append(info, score, winner);
@@ -493,6 +520,239 @@ function renderIssues(issues) {
     item.textContent = issue;
     return item;
   }));
+}
+
+/* ---------- Форма гравчині (W/L) ---------- */
+function getPlayerMatches(state, playerId) {
+  if (!state) return [];
+  return state.matches
+    .filter((match) => match.playerA.id === playerId || match.playerB.id === playerId)
+    .map((match) => {
+      const isA = match.playerA.id === playerId;
+      const opponent = isA ? match.playerB : match.playerA;
+      const won = match.winner.id === playerId;
+      const score = match.sets.map((set) => (isA ? `${set.a}:${set.b}` : `${set.b}:${set.a}`)).join(" ");
+      return { opponent, won, score, timestamp: match.timestamp || "" };
+    })
+    .sort((left, right) => (left.timestamp || "").localeCompare(right.timestamp || ""));
+}
+
+function getPlayerForm(state, playerId, limit = 5) {
+  const matches = getPlayerMatches(state, playerId);
+  return matches.slice(-limit);
+}
+
+function renderFormDots(form) {
+  return form
+    .map((entry) => {
+      const cls = entry.won ? "form-dot--win" : "form-dot--loss";
+      const mark = entry.won ? "В" : "П";
+      return `<i class="form-dot ${cls}" title="${entry.won ? "Перемога" : "Поразка"} vs ${entry.opponent.surname} (${entry.score})">${mark}</i>`;
+    })
+    .join("");
+}
+
+/* ---------- Профіль гравчині (модалка) ---------- */
+function setupProfileDialog() {
+  if (!elements.profileDialog) return;
+
+  document.addEventListener("click", (event) => {
+    const trigger = event.target.closest("[data-player-id]");
+    if (!trigger) return;
+    openProfile(trigger.dataset.playerId);
+  });
+
+  elements.profileClose?.addEventListener("click", () => elements.profileDialog.close());
+  elements.profileDialog.addEventListener("click", (event) => {
+    if (event.target === elements.profileDialog) elements.profileDialog.close();
+  });
+}
+
+function openProfile(playerId) {
+  if (!currentState || !elements.profileDialog) return;
+  const item = currentState.ranking.find((entry) => entry.player.id === playerId);
+  if (!item) return;
+
+  const matches = getPlayerMatches(currentState, playerId).reverse();
+  const winRate = item.played ? Math.round((item.wins / item.played) * 100) : 0;
+  const form = getPlayerForm(currentState, playerId, 5);
+
+  const matchRows = matches.length
+    ? matches.map((entry) => `
+        <button class="profile-match" type="button" data-player-id="${entry.opponent.id}">
+          <span class="profile-match__opp">${entry.opponent.fullName}</span>
+          <span class="profile-match__score">${entry.score}</span>
+          <span class="profile-match__badge profile-match__badge--${entry.won ? "win" : "loss"}">${entry.won ? "Перемога" : "Поразка"}</span>
+        </button>
+      `).join("")
+    : `<p class="empty-state">Матчів ще не зіграно.</p>`;
+
+  elements.profileBody.innerHTML = `
+    <div class="profile__head">
+      <div class="profile__avatar avatar" style="--avatar-hue:${avatarHue(item.player.id)}">${playerInitials(item.player)}</div>
+      <div>
+        <p class="profile__pos">#${item.position} у рейтингу</p>
+        <h2 class="profile__name">${item.player.fullName}</h2>
+        ${form.length ? `<span class="form-dots">${renderFormDots(form)}</span>` : ""}
+      </div>
+    </div>
+    <div class="profile__stats">
+      <div><strong>${item.points}</strong><span>очок</span></div>
+      <div><strong>${item.wins}–${item.losses}</strong><span>В–П</span></div>
+      <div><strong>${winRate}%</strong><span>перемог</span></div>
+      <div><strong>${item.setsWon}:${item.setsLost}</strong><span>сети</span></div>
+      <div><strong>${item.gameDiff > 0 ? "+" : ""}${item.gameDiff}</strong><span>різниця</span></div>
+    </div>
+    <h3 class="profile__subtitle">Усі матчі (${matches.length})</h3>
+    <div class="profile__matches">${matchRows}</div>
+  `;
+
+  elements.profileDialog.scrollTop = 0;
+  if (elements.profileDialog.open) return;
+  if (typeof elements.profileDialog.showModal === "function") {
+    elements.profileDialog.showModal();
+  } else {
+    elements.profileDialog.setAttribute("open", "");
+  }
+}
+
+/* ---------- Хед-ту-хед (мобільна заміна матриці) ---------- */
+function setupH2h() {
+  if (!elements.h2hSelect) return;
+  elements.h2hSelect.addEventListener("change", () => {
+    if (currentState) renderH2hResults(currentState, elements.h2hSelect.value);
+  });
+}
+
+function renderH2h(state) {
+  if (!elements.h2hSelect) return;
+
+  if (!elements.h2hSelect.options.length) {
+    elements.h2hSelect.replaceChildren(...players.map((player) => {
+      const option = document.createElement("option");
+      option.value = player.id;
+      option.textContent = player.fullName;
+      return option;
+    }));
+  }
+
+  if (!elements.h2hSelect.value) {
+    elements.h2hSelect.value = state.ranking[0]?.player.id ?? players[0].id;
+  }
+
+  renderH2hResults(state, elements.h2hSelect.value);
+}
+
+function renderH2hResults(state, playerId) {
+  if (!elements.h2hResults) return;
+
+  const rows = players
+    .filter((player) => player.id !== playerId)
+    .map((opponent) => ({ opponent, result: state.matrix.get(`${playerId}:${opponent.id}`) }))
+    .sort((left, right) => {
+      const rank = (entry) => (entry.result ? (entry.result.result === "win" ? 0 : 1) : 2);
+      return rank(left) - rank(right);
+    });
+
+  elements.h2hResults.replaceChildren(...rows.map((entry) => {
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = "h2h-row";
+    row.dataset.playerId = entry.opponent.id;
+    row.appendChild(createAvatar(entry.opponent));
+
+    const name = document.createElement("span");
+    name.className = "h2h-row__name";
+    name.textContent = entry.opponent.fullName;
+
+    const outcome = document.createElement("span");
+    if (entry.result) {
+      outcome.className = `h2h-row__outcome h2h-row__outcome--${entry.result.result}`;
+      outcome.textContent = `${entry.result.score} · ${entry.result.result === "win" ? "В" : "П"}`;
+    } else {
+      outcome.className = "h2h-row__outcome h2h-row__outcome--none";
+      outcome.textContent = "ще не зіграно";
+    }
+
+    row.append(name, outcome);
+    return row;
+  }));
+}
+
+/* ---------- Темна тема ---------- */
+function setupTheme() {
+  const stored = localStorage.getItem("tl-theme");
+  const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)").matches;
+  applyTheme(stored || (prefersDark ? "dark" : "light"));
+
+  elements.themeToggle?.addEventListener("click", () => {
+    const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+    applyTheme(next);
+    localStorage.setItem("tl-theme", next);
+  });
+}
+
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  const dark = theme === "dark";
+  if (elements.themeToggle) {
+    elements.themeToggle.setAttribute("aria-pressed", String(dark));
+    const icon = elements.themeToggle.querySelector(".theme-icon");
+    if (icon) icon.textContent = dark ? "☀️" : "🌙";
+  }
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", dark ? "#241a12" : "#d2783f");
+}
+
+/* ---------- Pull-to-refresh ---------- */
+function setupPullToRefresh() {
+  const indicator = elements.ptrIndicator;
+  if (!indicator) return;
+
+  const THRESHOLD = 72;
+  const MAX = 110;
+  let startY = 0;
+  let pulling = false;
+  let distance = 0;
+
+  const reset = () => {
+    indicator.style.transform = "";
+    indicator.classList.remove("is-ready", "is-active");
+  };
+
+  document.addEventListener("touchstart", (event) => {
+    if (window.scrollY > 0 || isRefreshing) return;
+    startY = event.touches[0].clientY;
+    pulling = true;
+    distance = 0;
+  }, { passive: true });
+
+  document.addEventListener("touchmove", (event) => {
+    if (!pulling) return;
+    distance = event.touches[0].clientY - startY;
+    if (distance <= 0) { pulling = false; reset(); return; }
+    const pull = Math.min(distance * 0.5, MAX);
+    indicator.style.transform = `translateX(-50%) translateY(${pull}px)`;
+    indicator.classList.toggle("is-ready", distance > THRESHOLD);
+  }, { passive: true });
+
+  document.addEventListener("touchend", () => {
+    if (!pulling) return;
+    pulling = false;
+    if (distance > THRESHOLD) {
+      indicator.classList.add("is-active");
+      loadAndRender({ manual: true }).finally(reset);
+    } else {
+      reset();
+    }
+  });
+}
+
+/* ---------- Service worker (PWA: офлайн + на головний екран) ---------- */
+function registerServiceWorker() {
+  if (!("serviceWorker" in navigator)) return;
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  });
 }
 
 function restoreHashTarget() {
