@@ -1762,19 +1762,34 @@ body {
 
 @media (max-width: 1040px) {
   .app-header {
-    grid-template-columns: 1fr auto;
+    display: flex;
+    flex-wrap: wrap;
     align-items: center;
+    gap: 10px;
+  }
+
+  .brand {
+    margin-right: auto;
+  }
+
+  .header-status {
+    display: flex;
+    order: 2;
+    gap: 8px;
+  }
+
+  .header-status #last-updated {
+    display: none;
   }
 
   .nav-toggle {
     display: block;
-    justify-self: end;
-    order: 2;
+    order: 3;
   }
 
   .topbar {
-    order: 3;
-    grid-column: 1 / -1;
+    order: 4;
+    flex-basis: 100%;
     display: grid;
     overflow: hidden;
     max-height: 0;
@@ -1791,14 +1806,10 @@ body {
 
   .ghost-link {
     padding: 13px 6px;
-    border-bottom: 1px solid #eef2ec;
+    border-bottom: 1px solid var(--line);
   }
 
   .ghost-link.is-active::after {
-    display: none;
-  }
-
-  .header-status {
     display: none;
   }
 }

@@ -1,4 +1,4 @@
-import { buildLeagueState, buildScheduleState, parseCsv, players, rowsToEntries, rowsToScheduleEntries } from "./league.js?v=20260613-clay7";
+import { buildLeagueState, buildScheduleState, parseCsv, players, rowsToEntries, rowsToScheduleEntries } from "./league.js?v=20260613-clay8";
 
 const config = window.TENNIS_LEAGUE_CONFIG ?? {};
 
