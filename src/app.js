@@ -337,17 +337,19 @@ function renderRecentMatches(matches) {
 }
 
 function renderSchedule(schedule) {
-  elements.scheduleCount.textContent = `${schedule.matches.length} ${declineMatch(schedule.matches.length)}`;
+  const visibleMatches = schedule.matches.filter((match) => match.status !== "past");
+
+  elements.scheduleCount.textContent = `${visibleMatches.length} ${declineMatch(visibleMatches.length)}`;
   elements.scheduleNext.textContent = schedule.next
     ? `Наступний: ${formatScheduleDate(schedule.next)} о ${schedule.next.time}`
     : "Усі матчі розкладу позаду";
 
-  if (!schedule.matches.length) {
-    elements.scheduleList.innerHTML = `<p class="empty-state">Розклад ще не доданий.</p>`;
+  if (!visibleMatches.length) {
+    elements.scheduleList.innerHTML = `<p class="empty-state">Немає матчів на сьогодні або майбутні дати.</p>`;
     return;
   }
 
-  const grouped = groupScheduleByDate(schedule.matches);
+  const grouped = groupScheduleByDate(visibleMatches);
   elements.scheduleList.replaceChildren(...grouped.map((group) => {
     const card = document.createElement("article");
     card.className = `schedule-day schedule-day--${group.status}`;

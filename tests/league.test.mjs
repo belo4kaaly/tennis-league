@@ -73,6 +73,19 @@ test("builds schedule from June calendar data", async () => {
   assert.equal(state.next.playerB.fullName, "Рубець Юлія");
 });
 
+test("marks past schedule matches separately from today and upcoming", async () => {
+  const csv = await readFile(new URL("../data/schedule-june-2026.csv", import.meta.url), "utf8");
+  const entries = rowsToScheduleEntries(parseCsv(csv));
+  const state = buildScheduleState(entries, new Date(2026, 5, 13, 8, 0));
+  const visibleMatches = state.matches.filter((match) => match.status !== "past");
+
+  assert.equal(state.matches.length, 21);
+  assert.equal(visibleMatches.length, 12);
+  assert.equal(visibleMatches[0].status, "today");
+  assert.equal(visibleMatches[0].date, "13.06.2026");
+  assert.equal(visibleMatches.some((match) => match.status === "past"), false);
+});
+
 test("reads structured Google Sheet match export with title row", () => {
   const rows = parseCsv(`Tennis League — Журнал матчів
 Дата додавання,Гравчиня 1,Гравчиня 2,Рахунок,Переможниця,Програвша,Сети гравчині 1,Сети гравчині 2
