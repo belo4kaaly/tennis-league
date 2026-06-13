@@ -886,21 +886,21 @@ body {
   font-size: 1rem;
 }
 
-.ranking-table tr:nth-child(1) .position-badge::before,
-.ranking-table tr:nth-child(2) .position-badge::before,
-.ranking-table tr:nth-child(3) .position-badge::before {
+.ranking-table tr[data-position="1"] .position-badge::before,
+.ranking-table tr[data-position="2"] .position-badge::before,
+.ranking-table tr[data-position="3"] .position-badge::before {
   margin-right: 8px;
 }
 
-.ranking-table tr:nth-child(1) .position-badge::before {
+.ranking-table tr[data-position="1"] .position-badge::before {
   content: "🥇";
 }
 
-.ranking-table tr:nth-child(2) .position-badge::before {
+.ranking-table tr[data-position="2"] .position-badge::before {
   content: "🥈";
 }
 
-.ranking-table tr:nth-child(3) .position-badge::before {
+.ranking-table tr[data-position="3"] .position-badge::before {
   content: "🥉";
 }
 
@@ -1657,12 +1657,16 @@ body {
 }
 
 /* --- Ranking: medal replaces the numeral for top 3 (no stacking) --- */
-.ranking-table tr:nth-child(-n + 3) .position-badge {
+.ranking-table tr[data-position="1"] .position-badge,
+.ranking-table tr[data-position="2"] .position-badge,
+.ranking-table tr[data-position="3"] .position-badge {
   font-size: 0;
   line-height: 1;
 }
 
-.ranking-table tr:nth-child(-n + 3) .position-badge::before {
+.ranking-table tr[data-position="1"] .position-badge::before,
+.ranking-table tr[data-position="2"] .position-badge::before,
+.ranking-table tr[data-position="3"] .position-badge::before {
   margin: 0;
   font-size: 1.7rem;
   line-height: 1;

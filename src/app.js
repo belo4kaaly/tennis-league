@@ -245,6 +245,7 @@ function renderRanking(state) {
   elements.rankingBody.replaceChildren(...state.ranking.map((item, index) => {
     const row = document.createElement("tr");
     row.style.setProperty("--row-index", index);
+    row.dataset.position = String(item.position);
 
     const positionCell = document.createElement("td");
     positionCell.innerHTML = `<span class="position-badge">${item.position}</span>`;
@@ -265,14 +266,14 @@ function renderRanking(state) {
     const playedCell = document.createElement("td");
     playedCell.textContent = item.played;
 
-    const gamesCell = document.createElement("td");
-    gamesCell.textContent = `${item.gamesWon}:${item.gamesLost}`;
-    gamesCell.title = `Різниця геймів: ${item.gameDiff > 0 ? "+" : ""}${item.gameDiff}`;
+    const gameDiffCell = document.createElement("td");
+    gameDiffCell.textContent = `${item.gameDiff > 0 ? "+" : ""}${item.gameDiff}`;
+    gameDiffCell.title = `Гейми: ${item.gamesWon}:${item.gamesLost}`;
 
     const pointsCell = document.createElement("td");
     pointsCell.innerHTML = `<strong>${item.points}</strong>`;
 
-    row.append(positionCell, playerCell, playedCell, gamesCell, pointsCell);
+    row.append(positionCell, playerCell, playedCell, gameDiffCell, pointsCell);
     return row;
   }));
 }
