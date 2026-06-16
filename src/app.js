@@ -46,6 +46,8 @@ let currentState = null;
 init();
 
 function init() {
+  resetInitialMatrixHash();
+  setupAnchorNavigation();
   setupTheme();
   setupNavToggle();
   setupScrollSpy();
@@ -58,6 +60,44 @@ function init() {
 
   loadAndRender();
   window.setInterval(() => loadAndRender(), REFRESH_INTERVAL_MS);
+}
+
+function resetInitialMatrixHash() {
+  if (window.location.hash !== "#matrix") return;
+  clearUrlHash();
+  window.requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0 }));
+}
+
+function setupAnchorNavigation() {
+  document.querySelectorAll('a[href^="#"]').forEach((link) => {
+    link.addEventListener("click", (event) => {
+      const hash = link.getAttribute("href");
+      if (!hash || hash === "#") return;
+      if (!scrollToSection(hash, "smooth")) return;
+
+      event.preventDefault();
+      clearUrlHash();
+    });
+  });
+}
+
+function clearUrlHash() {
+  window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+}
+
+function scrollToSection(hash, behavior = "auto") {
+  if (hash === "#overview" || hash === "#top") {
+    window.scrollTo({ top: 0, behavior });
+    return true;
+  }
+
+  const target = document.querySelector(hash);
+  if (!target) return false;
+
+  const headerHeight = document.querySelector(".app-header")?.getBoundingClientRect().height ?? 0;
+  const top = target.getBoundingClientRect().top + window.scrollY - headerHeight - 18;
+  window.scrollTo({ top: Math.max(0, top), behavior });
+  return true;
 }
 
 async function loadAndRender({ manual = false } = {}) {
@@ -760,16 +800,6 @@ function restoreHashTarget() {
   if (!hash) return;
 
   window.requestAnimationFrame(() => {
-    if (hash === "#overview" || hash === "#top") {
-      window.scrollTo({ top: 0 });
-      return;
-    }
-
-    const target = document.querySelector(hash);
-    if (!target) return;
-
-    const headerHeight = document.querySelector(".app-header")?.getBoundingClientRect().height ?? 0;
-    const top = target.getBoundingClientRect().top + window.scrollY - headerHeight - 18;
-    window.scrollTo({ top: Math.max(0, top) });
+    scrollToSection(hash);
   });
 }
