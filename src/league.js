@@ -83,33 +83,37 @@ export function rowsToEntries(rows) {
 
 export function rowsToScheduleEntries(rows) {
   if (!rows.length) return [];
-  const headers = rows[0].map((header) => normalizeText(header));
+  const headerRowIndex = findScheduleHeaderRow(rows);
+  const headers = rows[headerRowIndex].map((header) => normalizeText(header));
   const dateColumn = findHeader(headers, ["дата", "date"]) ?? 0;
   const dayColumn = findHeader(headers, ["день", "day"]);
   const timeColumn = findHeader(headers, ["час", "time"]) ?? 1;
   const playerAColumn = findHeader(headers, ["гравчиня 1", "player 1", "player a"]) ?? 2;
   const playerBColumn = findHeader(headers, ["гравчиня 2", "player 2", "player b"]) ?? 3;
+  const lifecycleStatusColumn = findHeader(headers, ["статус", "status"]);
   const noteColumn = findHeader(headers, ["примітка", "note"]);
 
-  return rows.slice(1)
+  return rows.slice(headerRowIndex + 1)
     .map((row, index) => ({
       date: row[dateColumn]?.trim() ?? "",
       day: dayColumn === undefined ? "" : row[dayColumn]?.trim() ?? "",
       time: row[timeColumn]?.trim() ?? "",
       playerA: row[playerAColumn]?.trim() ?? "",
       playerB: row[playerBColumn]?.trim() ?? "",
+      lifecycleStatus: lifecycleStatusColumn === undefined ? "" : row[lifecycleStatusColumn]?.trim() ?? "",
       note: noteColumn === undefined ? "" : row[noteColumn]?.trim() ?? "",
-      sourceRow: index + 2
+      sourceRow: headerRowIndex + index + 2
     }))
     .filter((entry) => entry.date || entry.time || entry.playerA || entry.playerB);
 }
 
 export function buildScheduleState(entries, now = new Date()) {
   const issues = [];
-  const matches = entries.map((entry) => {
+  const parsed = entries.map((entry) => {
     const playerA = resolvePlayer(entry.playerA);
     const playerB = resolvePlayer(entry.playerB);
     const startsAt = parseScheduleDate(entry.date, entry.time);
+    const lifecycleStatus = normalizeScheduleLifecycleStatus(entry.lifecycleStatus);
 
     if (!playerA || !playerB) {
       issues.push(`Невідома гравчиня в розкладі, рядок ${entry.sourceRow}.`);
@@ -119,16 +123,36 @@ export function buildScheduleState(entries, now = new Date()) {
       issues.push(`Не можу прочитати дату/час у розкладі, рядок ${entry.sourceRow}.`);
     }
 
+    if (!lifecycleStatus) {
+      issues.push(`Невідомий статус розкладу "${entry.lifecycleStatus}", рядок ${entry.sourceRow}; запис показано як запланований.`);
+    }
+
     return {
       ...entry,
       playerA,
       playerB,
       startsAt,
+      lifecycleStatus: lifecycleStatus || "unknown",
       status: getScheduleStatus(startsAt, now)
     };
   }).filter((match) => match.playerA && match.playerB && match.startsAt)
     .sort((left, right) => left.startsAt - right.startsAt);
 
+  const activeByPair = new Map();
+  parsed
+    .filter((match) => match.lifecycleStatus === "planned")
+    .forEach((match) => {
+      const key = pairKey(match.playerA.id, match.playerB.id);
+      if (activeByPair.has(key)) {
+        const previous = activeByPair.get(key);
+        issues.push(
+          `Дубль активного розкладу ${previous.playerA.surname} - ${previous.playerB.surname}; показано пізніший запис.`
+        );
+      }
+      activeByPair.set(key, match);
+    });
+
+  const matches = [...activeByPair.values()].sort((left, right) => left.startsAt - right.startsAt);
   const next = matches.find((match) => match.status !== "past") ?? null;
 
   return { matches, issues, next };
@@ -368,6 +392,18 @@ function findMatchHeaderRow(rows) {
   return foundIndex === -1 ? 0 : foundIndex;
 }
 
+function findScheduleHeaderRow(rows) {
+  const foundIndex = rows.findIndex((row) => {
+    const headers = row.map((header) => normalizeText(header));
+    return findHeader(headers, ["дата", "date"]) !== undefined
+      && findHeader(headers, ["час", "time"]) !== undefined
+      && findHeader(headers, ["гравчиня 1", "player 1", "player a"]) !== undefined
+      && findHeader(headers, ["гравчиня 2", "player 2", "player b"]) !== undefined;
+  });
+
+  return foundIndex === -1 ? 0 : foundIndex;
+}
+
 function findExactHeader(headers, candidates) {
   const normalizedCandidates = candidates.map((candidate) => normalizeText(candidate));
   const index = headers.findIndex((header) => normalizedCandidates.includes(header));
@@ -396,14 +432,30 @@ function normalizeText(value) {
     .trim();
 }
 
-function parseScheduleDate(date, time) {
-  const dateMatch = String(date).trim().match(/^(\d{1,2})\.(\d{1,2})(?:\.(\d{2,4}))?$/);
-  const timeMatch = String(time).trim().match(/^(\d{1,2}):(\d{2})$/);
-  if (!dateMatch || !timeMatch) return null;
+function normalizeScheduleLifecycleStatus(value) {
+  const normalized = normalizeText(value);
+  if (!normalized) return "planned";
+  if (["заплановано", "запланований", "scheduled", "planned", "active"].includes(normalized)) return "planned";
+  if (["зіграно", "зіграний", "played", "done", "complete", "completed"].includes(normalized)) return "played";
+  if (["скасовано", "скасований", "canceled", "cancelled"].includes(normalized)) return "canceled";
+  if (normalized === "перенесено" || normalized === "перенесений" || normalized.startsWith("перенесено на")
+    || ["rescheduled", "postponed"].includes(normalized)) {
+    return "rescheduled";
+  }
+  return "";
+}
 
-  const day = Number(dateMatch[1]);
-  const month = Number(dateMatch[2]) - 1;
-  const year = dateMatch[3] ? Number(dateMatch[3].length === 2 ? `20${dateMatch[3]}` : dateMatch[3]) : 2026;
+function parseScheduleDate(date, time) {
+  const rawDate = String(date).trim();
+  const dottedDateMatch = rawDate.match(/^(\d{1,2})\.(\d{1,2})(?:\.(\d{2,4}))?$/);
+  const isoDateMatch = rawDate.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  const timeMatch = String(time).trim().match(/^(\d{1,2}):(\d{2})$/);
+  if ((!dottedDateMatch && !isoDateMatch) || !timeMatch) return null;
+
+  const day = Number(isoDateMatch ? isoDateMatch[3] : dottedDateMatch[1]);
+  const month = Number(isoDateMatch ? isoDateMatch[2] : dottedDateMatch[2]) - 1;
+  const rawYear = isoDateMatch ? isoDateMatch[1] : dottedDateMatch[3];
+  const year = rawYear ? Number(rawYear.length === 2 ? `20${rawYear}` : rawYear) : 2026;
   const hour = Number(timeMatch[1]);
   const minute = Number(timeMatch[2]);
 

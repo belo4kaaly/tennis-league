@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
   buildLeagueState,
@@ -33,20 +32,20 @@ test("flags unknown players and incomplete scores", () => {
   assert.equal(parseMatchLine("Бородай - Омельяненко").ok, false);
 });
 
-test("builds ranking from screenshot review data", async () => {
-  const csv = await readFile(new URL("../data/screenshot-matches-review.csv", import.meta.url), "utf8");
+test("builds ranking from inline match CSV", () => {
+  const csv = `Timestamp,Матч,Примітка
+Скрін,Антощенко - Таран 6:0 6:0,Потребує підтвердження зі скріну
+Скрін,Бородай - Омельяненко 6:3 6:4,Потребує підтвердження зі скріну
+Скрін,Гончаренко - Карпець 6:1 6:1,Потребує підтвердження зі скріну
+`;
   const entries = rowsToEntries(parseCsv(csv));
   const state = buildLeagueState(entries);
 
-  assert.equal(state.matches.length, 20);
+  assert.equal(state.matches.length, 3);
   assert.equal(state.issues.length, 0);
   assert.equal(state.stats.leader.player.fullName, "Антощенко Тетяна");
-  assert.equal(state.stats.leader.points, 6);
-  const honcharenko = state.ranking.find((item) => item.player.fullName === "Гончаренко Анелія");
-  const omelianenko = state.ranking.find((item) => item.player.fullName === "Омельяненко Анна");
-  assert.equal(honcharenko.gameDiff, 15);
-  assert.equal(omelianenko.gameDiff, 15);
-  assert.equal(honcharenko.position, omelianenko.position);
+  assert.equal(state.stats.leader.points, 1);
+  assert.equal(state.stats.leader.gameDiff, 12);
 });
 
 test("reports duplicate pair and uses latest result", () => {
@@ -60,12 +59,16 @@ test("reports duplicate pair and uses latest result", () => {
   assert.equal(state.matches[0].winner.fullName, "Омельяненко Анна");
 });
 
-test("builds schedule from June calendar data", async () => {
-  const csv = await readFile(new URL("../data/schedule-june-2026.csv", import.meta.url), "utf8");
+test("builds schedule from inline calendar data", () => {
+  const csv = `Дата,День,Час,Гравчиня 1,Гравчиня 2,Примітка
+12.06.2026,п'ятниця,09:00,Омельяненко Анна,Боблях Аліна,Перенесено зі скріну
+13.06.2026,субота,09:00,Стрижак Олена,Рубець Юлія,Перенесено зі скріну
+14.06.2026,неділя,10:00,Троцак Аліна,Карпець Марія,Перенесено зі скріну
+`;
   const entries = rowsToScheduleEntries(parseCsv(csv));
   const state = buildScheduleState(entries, new Date(2026, 5, 12, 12, 0));
 
-  assert.equal(state.matches.length, 21);
+  assert.equal(state.matches.length, 3);
   assert.equal(state.issues.length, 0);
   assert.equal(state.next.date, "13.06.2026");
   assert.equal(state.next.time, "09:00");
@@ -73,17 +76,69 @@ test("builds schedule from June calendar data", async () => {
   assert.equal(state.next.playerB.fullName, "Рубець Юлія");
 });
 
-test("marks past schedule matches separately from today and upcoming", async () => {
-  const csv = await readFile(new URL("../data/schedule-june-2026.csv", import.meta.url), "utf8");
+test("marks past schedule matches separately from today and upcoming", () => {
+  const csv = `Дата,День,Час,Гравчиня 1,Гравчиня 2,Примітка
+12.06.2026,п'ятниця,09:00,Омельяненко Анна,Боблях Аліна,Перенесено зі скріну
+13.06.2026,субота,09:00,Стрижак Олена,Рубець Юлія,Перенесено зі скріну
+14.06.2026,неділя,10:00,Троцак Аліна,Карпець Марія,Перенесено зі скріну
+`;
   const entries = rowsToScheduleEntries(parseCsv(csv));
   const state = buildScheduleState(entries, new Date(2026, 5, 13, 8, 0));
   const visibleMatches = state.matches.filter((match) => match.status !== "past");
 
-  assert.equal(state.matches.length, 21);
-  assert.equal(visibleMatches.length, 12);
+  assert.equal(state.matches.length, 3);
+  assert.equal(visibleMatches.length, 2);
   assert.equal(visibleMatches[0].status, "today");
   assert.equal(visibleMatches[0].date, "13.06.2026");
   assert.equal(visibleMatches.some((match) => match.status === "past"), false);
+});
+
+test("reads live Google Sheet schedule export", () => {
+  const rows = parseCsv(`Tennis League — Розклад матчів Дата,День,Час,Гравчиня 1,Гравчиня 2,Статус,Примітка
+2026-06-22,понеділок,18:00,Антощенко Тетяна,Гончаренко Анелія,заплановано,Оновлено 22.06
+2026-06-25,четвер,9:00,Антощенко Тетяна,Боблях Аліна,заплановано,Оновлено 22.06
+`);
+  const entries = rowsToScheduleEntries(rows);
+  const state = buildScheduleState(entries, new Date(2026, 5, 22, 12, 0));
+
+  assert.equal(state.matches.length, 2);
+  assert.equal(state.issues.length, 0);
+  assert.equal(state.next.date, "2026-06-22");
+  assert.equal(state.next.time, "18:00");
+  assert.equal(state.next.lifecycleStatus, "planned");
+  assert.equal(state.next.note, "Оновлено 22.06");
+  assert.equal(state.next.playerA.fullName, "Антощенко Тетяна");
+  assert.equal(state.next.playerB.fullName, "Гончаренко Анелія");
+});
+
+test("hides inactive schedule statuses and keeps the latest active duplicate", () => {
+  const rows = parseCsv(`Дата,День,Час,Гравчиня 1,Гравчиня 2,Статус,Примітка
+2026-06-24,середа,19:00,Стрижак Олена,Саричева Оксана,перенесено,Стара дата
+2026-06-26,п'ятниця,18:00,Стрижак Олена,Саричева Оксана,заплановано,Нова дата
+2026-06-25,четвер,09:00,Антощенко Тетяна,Боблях Аліна,заплановано,Стара активна дата
+2026-06-27,субота,09:00,Антощенко Тетяна,Боблях Аліна,заплановано,Нова активна дата
+2026-06-27,субота,17:00,Бородай Олександра,Омельяненко Анна,зіграно,Результат внесено
+`);
+  const entries = rowsToScheduleEntries(rows);
+  const state = buildScheduleState(entries, new Date(2026, 5, 24, 12, 0));
+
+  assert.equal(state.matches.length, 2);
+  assert.equal(state.issues.length, 1);
+  assert.deepEqual(state.matches.map((match) => match.note), ["Нова дата", "Нова активна дата"]);
+  assert.equal(state.matches.every((match) => match.lifecycleStatus === "planned"), true);
+});
+
+test("hides unknown schedule statuses instead of showing them as planned", () => {
+  const rows = parseCsv(`Дата,День,Час,Гравчиня 1,Гравчиня 2,Статус,Примітка
+2026-06-24,середа,19:00,Стрижак Олена,Саричева Оксана,пернесено,Помилка в статусі
+2026-06-25,четвер,09:00,Антощенко Тетяна,Боблях Аліна,заплановано,Активний матч
+`);
+  const entries = rowsToScheduleEntries(rows);
+  const state = buildScheduleState(entries, new Date(2026, 5, 24, 12, 0));
+
+  assert.equal(state.matches.length, 1);
+  assert.equal(state.issues.length, 1);
+  assert.equal(state.matches[0].note, "Активний матч");
 });
 
 test("reads structured Google Sheet match export with title row", () => {

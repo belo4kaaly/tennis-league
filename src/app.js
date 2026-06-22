@@ -1,4 +1,4 @@
-import { buildLeagueState, buildScheduleState, parseCsv, players, rowsToEntries, rowsToScheduleEntries } from "./league.js?v=20260613-clay8";
+import { buildLeagueState, buildScheduleState, parseCsv, players, rowsToEntries, rowsToScheduleEntries } from "./league.js?v=20260622-next-card7";
 
 const config = window.TENNIS_LEAGUE_CONFIG ?? {};
 
@@ -199,29 +199,19 @@ function setupScrollSpy() {
 
 async function loadEntries() {
   const primaryCsv = config.csvUrl?.trim();
-  const demoCsv = config.demoCsvUrl?.trim();
-  let fallbackIssue = "";
 
   if (primaryCsv) {
     try {
       const entries = await fetchEntries(primaryCsv);
       return { entries, source: "live", loadedAt: new Date() };
     } catch (error) {
-      fallbackIssue = `Live CSV матчів недоступний, показую fallback-дані: ${error.message}`;
-      if (!config.useDemoDataWhenCsvMissing || !demoCsv) {
-        return {
-          entries: [],
-          source: "error",
-          loadedAt: new Date(),
-          issue: `Не вдалося завантажити CSV: ${error.message}`
-        };
-      }
+      return {
+        entries: [],
+        source: "error",
+        loadedAt: new Date(),
+        issue: `Не вдалося завантажити live CSV матчів: ${error.message}`
+      };
     }
-  }
-
-  if (demoCsv && config.useDemoDataWhenCsvMissing) {
-    const entries = await fetchEntries(demoCsv);
-    return { entries, source: "demo", loadedAt: new Date(), issue: fallbackIssue };
   }
 
   return { entries: [], source: "empty", loadedAt: new Date() };
@@ -236,24 +226,17 @@ async function fetchEntries(url) {
 
 async function loadScheduleEntries() {
   const primaryCsv = config.scheduleCsvUrl?.trim();
-  const demoCsv = config.demoScheduleCsvUrl?.trim();
 
   if (primaryCsv) {
     try {
       const entries = await fetchScheduleEntries(primaryCsv);
       return { entries };
     } catch (error) {
-      if (!config.useDemoDataWhenCsvMissing || !demoCsv) {
-        return {
-          entries: [],
-          issue: `Не вдалося завантажити CSV розкладу: ${error.message}`
-        };
-      }
+      return {
+        entries: [],
+        issue: `Не вдалося завантажити live CSV розкладу: ${error.message}`
+      };
     }
-  }
-
-  if (demoCsv && config.useDemoDataWhenCsvMissing) {
-    return { entries: await fetchScheduleEntries(demoCsv) };
   }
 
   return { entries: [] };
@@ -408,7 +391,7 @@ function renderSchedule(schedule) {
 
   elements.scheduleCount.textContent = `${visibleMatches.length} ${declineMatch(visibleMatches.length)}`;
   elements.scheduleNext.textContent = schedule.next
-    ? `Наступний: ${formatScheduleDate(schedule.next)} о ${schedule.next.time}`
+    ? `${formatScheduleDate(schedule.next)} о ${schedule.next.time}`
     : "Усі матчі розкладу позаду";
 
   if (!visibleMatches.length) {
@@ -416,17 +399,20 @@ function renderSchedule(schedule) {
     return;
   }
 
-  const grouped = groupScheduleByDate(visibleMatches);
-  elements.scheduleList.replaceChildren(...grouped.map((group) => {
+  const nextCard = createNextMatchCard(visibleMatches[0]);
+  const grouped = groupScheduleByDate(visibleMatches.slice(1));
+  elements.scheduleList.replaceChildren(nextCard, ...grouped.map((group) => {
     const card = document.createElement("article");
     card.className = `schedule-day schedule-day--${group.status}`;
 
     const matches = group.matches.map((match) => `
       <li class="schedule-match schedule-match--${match.status}">
         <time>${match.time}</time>
-        <span>${match.playerA.fullName}</span>
-        <i>—</i>
-        <span>${match.playerB.fullName}</span>
+        <div class="schedule-match__players">
+          <span>${match.playerA.fullName}</span>
+          <i>vs</i>
+          <span>${match.playerB.fullName}</span>
+        </div>
       </li>
     `).join("");
 
@@ -445,6 +431,32 @@ function renderSchedule(schedule) {
     `;
     return card;
   }));
+}
+
+function createNextMatchCard(match) {
+  const card = document.createElement("article");
+  card.className = `next-match next-match--${match.status}`;
+  const dayNumber = String(match.startsAt.getDate()).padStart(2, "0");
+  const monthLabel = match.startsAt.toLocaleDateString("uk-UA", { month: "short" }).replace(".", "");
+  const statusLabel = match.status === "today" ? "Сьогодні" : "Наступний";
+  card.innerHTML = `
+    <div class="next-match__date">
+      <strong>${dayNumber}</strong>
+      <span>${monthLabel}</span>
+    </div>
+    <div class="next-match__body">
+      <div class="next-match__header">
+        <h3>Наступний матч</h3>
+        <span>${statusLabel} • ${match.time}</span>
+      </div>
+      <div class="next-match__players">
+        <strong>${match.playerA.fullName}</strong>
+        <i>vs</i>
+        <strong>${match.playerB.fullName}</strong>
+      </div>
+    </div>  
+  `;
+  return card;
 }
 
 function groupScheduleByDate(matches) {
