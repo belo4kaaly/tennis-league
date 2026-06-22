@@ -1,14 +1,14 @@
 // Service worker — PWA: офлайн-кеш оболонки + останніх даних.
 // Версію бампати разом з ?v= ассетів в index.html, щоб скинути старий кеш.
-const CACHE = "tl-cache-20260622-next-card7";
+const CACHE = "tl-cache-20260622-next-card8";
 
 const SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=20260622-next-card7",
+  "./styles.css?v=20260622-next-card8",
   "./config.js",
-  "./src/app.js?v=20260622-next-card7",
-  "./src/league.js?v=20260622-next-card7",
+  "./src/app.js?v=20260622-next-card8",
+  "./src/league.js?v=20260622-next-card8",
   "./assets/tennis-court-hero.png",
   "./assets/icon-192.png",
   "./assets/icon-512.png",

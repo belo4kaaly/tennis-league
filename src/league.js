@@ -124,7 +124,7 @@ export function buildScheduleState(entries, now = new Date()) {
     }
 
     if (!lifecycleStatus) {
-      issues.push(`Невідомий статус розкладу "${entry.lifecycleStatus}", рядок ${entry.sourceRow}; запис показано як запланований.`);
+      issues.push(`Невідомий статус розкладу "${entry.lifecycleStatus}", рядок ${entry.sourceRow}; запис приховано з календаря.`);
     }
 
     return {

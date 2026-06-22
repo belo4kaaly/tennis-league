@@ -1,4 +1,4 @@
-import { buildLeagueState, buildScheduleState, parseCsv, players, rowsToEntries, rowsToScheduleEntries } from "./league.js?v=20260622-next-card7";
+import { buildLeagueState, buildScheduleState, parseCsv, players, rowsToEntries, rowsToScheduleEntries } from "./league.js?v=20260622-next-card8";
 
 const config = window.TENNIS_LEAGUE_CONFIG ?? {};
 
@@ -454,7 +454,7 @@ function createNextMatchCard(match) {
         <i>vs</i>
         <strong>${match.playerB.fullName}</strong>
       </div>
-    </div>  
+    </div>
   `;
   return card;
 }

@@ -138,6 +138,7 @@ test("hides unknown schedule statuses instead of showing them as planned", () =>
 
   assert.equal(state.matches.length, 1);
   assert.equal(state.issues.length, 1);
+  assert.match(state.issues[0], /приховано з календаря/);
   assert.equal(state.matches[0].note, "Активний матч");
 });
 
